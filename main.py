@@ -2,6 +2,7 @@ import asyncio, httpx, time, pickle
 from bs4 import BeautifulSoup
 import configparser
 import discord
+from discord.commands import permissions
 
 
 class ContactLocation:
@@ -13,7 +14,7 @@ class ContactLocation:
         self.contact = contact
 
     def __str__(self):
-        res = f"Exposure site on **{self.date}**, at **{self.time}**.\nCampus: *{self.campus}*, Location: ***{self.location}***\n"
+        res = f"Exposure site on *{self.date}**, at *{self.time}**.\nCampus: **{self.campus}**, Location: **{self.location}**\n"
         if self.contact != "Casual":
             res += f"***Contact Status: {self.contact}***"
         else:
@@ -37,10 +38,10 @@ class ContactLocation:
 
 
 class MyBot(discord.Bot):
-    def __init__(self, wait_time: str, site_url: str) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.wait_time = wait_time
-        self.site_url = site_url
+        self.wait_time = 600.0
+        self.site_url = "http://0.0.0.0"
         self.raw_post_locations: list[tuple[int, int]] = list()
         try:
             with open("servers.csv") as f:
@@ -49,6 +50,10 @@ class MyBot(discord.Bot):
                     self.raw_post_locations.append((int(a), int(b)))
         except FileNotFoundError:
             pass
+
+    def set_config(self, wait_time: str, site_url: str):
+        self.wait_time = wait_time
+        self.site_url = site_url
 
     async def on_ready(self):
         print(f"Logged in as {self.user}")
@@ -78,6 +83,70 @@ class MyBot(discord.Bot):
                     await channel.send(str(contact))
 
 
+bot = MyBot()
+
+
+@bot.slash_command()
+async def add_channel(ctx):
+    "Add a channel to the list of places to notify"
+    # Must be in channel
+    if not isinstance(ctx.author, discord.Member):
+        await ctx.respond("This command can only be used in channels", ephemeral=True)
+        return
+    # Must be from admin
+    if not ctx.author.guild_permissions.administrator:
+        await ctx.respond("This command is for admins only", ephemeral=True)
+        return
+
+    location = (ctx.guild, ctx.channel)
+
+    if location in ctx.bot.parsed_post_locations:
+        # Already in the list
+        await ctx.respond("This channel is already in the list", ephemeral=True)
+        return
+
+    # Good to go
+    ctx.bot.parsed_post_locations.append(location)
+    # Saving
+    save_servers(ctx.bot.parsed_post_locations)
+    await ctx.respond("Added this channel to the list!")
+
+
+@bot.slash_command()
+async def remove_channel(ctx):
+    "Remove a channel from the list of places to notify"
+    # Must be in channel
+    if not isinstance(ctx.author, discord.Member):
+        await ctx.respond("This command can only be used in channels", ephemeral=True)
+        return
+    # Must be from admin
+    if not ctx.author.guild_permissions.administrator:
+        await ctx.respond("This command is for admins only", ephemeral=True)
+        return
+
+    location = (ctx.guild, ctx.channel)
+
+    if location not in ctx.bot.parsed_post_locations:
+        # Already in the list
+        await ctx.respond("This channel isn't currently in the list", ephemeral=True)
+        return
+
+    # Good to go
+    ctx.bot.parsed_post_locations.remove(location)
+    # Saving
+    save_servers(ctx.bot.parsed_post_locations)
+    await ctx.respond("Removed this channel from the list!")
+
+
+def save_servers(servers: list[tuple[discord.Guild, discord.abc.Messageable]]) -> None:
+    with open("servers.csv", "wt") as f:
+        for guild, channel in servers:
+            f.write(str(guild.id))
+            f.write(",")
+            f.write(str(channel.id))
+            f.write("\n")
+
+
 def main() -> None:
     config = configparser.ConfigParser()
     config.read("config.ini")
@@ -85,7 +154,7 @@ def main() -> None:
     wait_time: float = config["DEFAULT"].getfloat("MinutesBetweenChecks") * 60.0
     site_url: str = config["DEFAULT"]["SiteUrl"]
 
-    bot = MyBot(wait_time, site_url)
+    bot.set_config(wait_time, site_url)
 
     bot.run(bot_token)
 
