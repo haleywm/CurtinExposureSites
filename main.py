@@ -14,7 +14,7 @@ class ContactLocation:
         self.contact = contact
 
     def __str__(self):
-        res = f"Exposure site on *{self.date}**, at *{self.time}**.\nCampus: **{self.campus}**, Location: **{self.location}**\n"
+        res = f"Exposure site on *{self.date}*, at *{self.time}*.\nCampus: **{self.campus}**, Location: **{self.location}**\n"
         if self.contact != "Casual":
             res += f"***Contact Status: {self.contact}***"
         else:
@@ -175,7 +175,7 @@ async def site_check_loop(wait_time: float, target_url: str, bot: discord.Bot) -
             contacts = parse_webpage(r)
             if contacts != prev_contacts:
                 # New things!
-                new_contacts = set(contacts).difference(set(prev_contacts))
+                new_contacts = [x for x in contacts if x not in prev_contacts]
                 if len(new_contacts) > 0:
                     print(f"Downloaded {len(new_contacts)} new contact locations")
                     await bot.post_contacts(list(new_contacts))
