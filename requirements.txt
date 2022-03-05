@@ -1,0 +1,4 @@
+httpx
+beautifulsoup4
+py-cord==2.0.0b4
+
