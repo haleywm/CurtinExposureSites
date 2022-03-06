@@ -43,6 +43,8 @@ class MyBot(discord.Bot):
         self.wait_time = 600.0
         self.site_url = "http://0.0.0.0"
         self.raw_post_locations: list[tuple[int, int]] = list()
+        self.bg_task = None
+
         try:
             with open("servers.csv") as f:
                 for line in f:
@@ -70,9 +72,10 @@ class MyBot(discord.Bot):
                 continue
             self.parsed_post_locations.append((guild, channel))
 
-        self.bg_task = asyncio.create_task(
-            site_check_loop(self.wait_time, self.site_url, self)
-        )
+        if self.bg_task is None:
+            self.bg_task = asyncio.create_task(
+                site_check_loop(self.wait_time, self.site_url, self)
+            )
 
     async def post_contacts(self, contacts: list[ContactLocation]):
         # Go through every post location in the post location list, and go through every new item in the new contact list, and post it in each location
