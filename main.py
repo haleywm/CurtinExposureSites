@@ -181,7 +181,7 @@ async def site_check_loop(wait_time: float, target_url: str, bot: discord.Bot) -
                     await bot.post_contacts(list(new_contacts))
                 prev_contacts = contacts
                 with open("data.pickle", "wb") as f:
-                    pickle.dump(contacts, pickle.HIGHEST_PROTOCOL)
+                    pickle.dump(contacts, f, pickle.HIGHEST_PROTOCOL)
             else:
                 print("Checked, no new items")
 
